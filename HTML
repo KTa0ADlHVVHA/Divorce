@@ -1,0 +1,155 @@
+<div id="gameBox"><!-- Two draggable character images --><img id="charA" src="https://nadia-and-autumn-are-not-dating.webcomic.ws/files/idle.gif" /> <img id="charB" src="https://nadia-and-autumn-are-not-dating.webcomic.ws/files/idle.gif" /></div>
+<style type="text/css">/* Main container for the game */
+  #gameBox {
+    width: min(90vw, 600px);
+    height: 50vh;
+    margin: auto;
+    position: relative;
+    background: transparent;
+    overflow: visible;
+    user-select: none;
+    touch-action: none;
+  }
+
+  /* Style for the characters */
+  #charA, #charB {
+    position: absolute;
+    width: 60px;
+    transition: transform 0.15s;
+    touch-action: none;
+  }
+</style>
+<script>
+  // Grab references to the main elements
+  const gameBox = document.getElementById('gameBox');
+  const charA = document.getElementById('charA');
+  const charB = document.getElementById('charB');
+
+  let activeCharacter = null; // Which character we're dragging
+
+  // Helper: Move a character to a specific (x, y) position
+  function setCharacterPosition(character, x, y) {
+    character.style.left = x + 'px';
+    character.style.top = y + 'px';
+  }
+
+  // Helper: Get the center (x, y) of a character
+  function getCharacterCenter(character) {
+    const rect = character.getBoundingClientRect();
+    const boxRect = gameBox.getBoundingClientRect();
+    return [
+      rect.left - boxRect.left + rect.width / 2,
+      rect.top - boxRect.top + rect.height / 2
+    ];
+  }
+
+  // Slightly animate and nudge a character
+  function nudgeCharacter(character, dx, dy) {
+    const currentX = parseFloat(character.style.left || 0);
+    const currentY = parseFloat(character.style.top || 0);
+    setCharacterPosition(character, currentX + dx, currentY + dy);
+
+    character.style.transform = 'scale(1.15)';
+    setTimeout(() => {
+      character.style.transform = 'scale(1)';
+    }, 100);
+  }
+
+  // Keep characters from flying out of bounds
+  function keepCharacterInsideBox(character) {
+    const boxRect = gameBox.getBoundingClientRect();
+    const maxX = boxRect.width - character.offsetWidth;
+    const maxY = boxRect.height - character.offsetHeight;
+
+    let x = parseFloat(character.style.left || 0);
+    let y = parseFloat(character.style.top || 0);
+
+    if (x < 0) x += -x * 0.2;
+    if (y < 0) y += -y * 0.2;
+    if (x > maxX) x -= (x - maxX) * 0.2;
+    if (y > maxY) y -= (y - maxY) * 0.2;
+
+    setCharacterPosition(character, x, y);
+  }
+
+  // Characters push each other if they get too close
+  function repelCharacters() {
+    const [ax, ay] = getCharacterCenter(charA);
+    const [bx, by] = getCharacterCenter(charB);
+
+    const dx = ax - bx;
+    const dy = ay - by;
+    const distance = Math.hypot(dx, dy);
+
+    if (distance && distance < 120) {
+      // Calculate the push strength
+      const force = (120 - distance) * 0.6 * (0.9 + Math.random() * 0.3) / distance;
+
+      if (activeCharacter !== charA) {
+        nudgeCharacter(charA, dx * force, dy * force);
+      } else {
+        nudgeCharacter(charA, dx * force * 0.2, dy * force * 0.2);
+      }
+
+      if (activeCharacter !== charB) {
+        nudgeCharacter(charB, -dx * force, -dy * force);
+      } else {
+        nudgeCharacter(charB, -dx * force * 0.2, -dy * force * 0.2);
+      }
+    }
+
+    // Make sure both stay inside the box
+    keepCharacterInsideBox(charA);
+    keepCharacterInsideBox(charB);
+  }
+
+  // Start dragging a character
+  function startDragging(event, character) {
+    activeCharacter = character;
+    event.preventDefault();
+  }
+
+  // Move the dragged character to follow the mouse/touch
+  function dragCharacter(event) {
+    if (!activeCharacter) return;
+
+    const boxRect = gameBox.getBoundingClientRect();
+    const p = event.touches ? event.touches[0] : event;
+
+    const x = p.clientX - boxRect.left - activeCharacter.offsetWidth / 2;
+    const y = p.clientY - boxRect.top - activeCharacter.offsetHeight / 2;
+
+    setCharacterPosition(activeCharacter, x, y);
+  }
+
+  // Stop dragging
+  function stopDragging() {
+    activeCharacter = null;
+  }
+
+  // Place the characters when the page loads
+  function initGame() {
+    const boxRect = gameBox.getBoundingClientRect();
+    setCharacterPosition(charA, boxRect.width * 0.3 - 30, boxRect.height * 0.5 - 30);
+    setCharacterPosition(charB, boxRect.width * 0.7 - 30, boxRect.height * 0.5 - 30);
+  }
+
+  // Event listeners
+  ['mousedown', 'touchstart'].forEach(eventType => {
+    [charA, charB].forEach(character => {
+      character.addEventListener(eventType, e => startDragging(e, character));
+    });
+  });
+
+  ['mousemove', 'touchmove'].forEach(eventType => {
+    document.addEventListener(eventType, dragCharacter);
+  });
+
+  ['mouseup', 'touchend', 'touchcancel'].forEach(eventType => {
+    document.addEventListener(eventType, stopDragging);
+  });
+ // Set up the game
+  initGame();
+  setInterval(repelCharacters, 16); // Keep checking every frame
+ 
+</script>
